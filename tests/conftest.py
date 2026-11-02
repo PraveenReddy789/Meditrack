@@ -32,14 +32,6 @@ def client(app):
         yield c
 
 
-def login(app, role: str) -> TestClient:
-    c = TestClient(app)
-    c.__enter__()
-    r = c.post("/api/auth/login", json={"username": role, "password": PASSWORDS[role]})
-    assert r.status_code == 200, r.text
-    return c
-
-
 @pytest.fixture()
 def clients(app):
     """One signed-in client per role, sharing one app and database."""
