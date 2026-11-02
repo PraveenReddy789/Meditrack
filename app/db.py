@@ -197,6 +197,14 @@ class AppointmentRepository:
             row = conn.execute("SELECT * FROM appointments WHERE id = ?", (appt_id,)).fetchone()
         return dict(row) if row else None
 
+    def get_many(self, ids: list[int]) -> list[dict]:
+        if not ids:
+            return []
+        marks = ",".join("?" * len(ids))
+        with self.db.connect() as conn:
+            rows = conn.execute(f"SELECT * FROM appointments WHERE id IN ({marks}) ORDER BY id", ids).fetchall()
+        return [dict(r) for r in rows]
+
     def list(
         self,
         *,

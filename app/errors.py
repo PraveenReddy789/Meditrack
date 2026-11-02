@@ -28,3 +28,7 @@ class PermissionDeniedError(AppError):
 
 class TooManyAttemptsError(AppError):
     status_code = 429
+
+
+class ValidationFailedError(AppError):
+    status_code = 422
