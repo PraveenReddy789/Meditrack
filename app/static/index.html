@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediTrack · No-show reconciliation</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script type="module" src="/static/js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar" id="topbar" hidden>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">+</span> MediTrack</div>
+    <nav id="tabs" class="tabs" aria-label="Sections"></nav>
+    <div class="user">
+      <span id="user-chip" class="chip"></span>
+      <button type="button" id="logout" class="btn btn-quiet">Sign out</button>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1"></main>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+  <noscript><p class="noscript">MediTrack needs JavaScript enabled.</p></noscript>
+</body>
+</html>
