@@ -215,3 +215,20 @@ def test_rescore_updates_scheduled_appointments(service):
     assert svc.rescore_scheduled() == 1
     got = repo.get(appt_id)
     assert got["model_version"] == svc.info.version and got["risk_score"] != 0.99
+
+
+def test_threshold_never_flags_more_than_the_cap():
+    from app.ml.model import MAX_FLAG_RATE, _best_threshold
+
+    rng = np.random.default_rng(3)
+    y = (rng.random(4000) < 0.2).astype(int)
+    p = np.clip(0.2 + 0.05 * rng.standard_normal(4000) + 0.05 * y, 0, 1)  # weak signal: F1 alone would flag ~everyone
+    t = _best_threshold(y, p)
+    assert (p >= t).mean() <= MAX_FLAG_RATE + 0.02
+
+
+def test_trained_model_flags_a_manageable_share():
+    feats, y = generate(3000, 42)
+    m = train_model("logistic", feats, y, np.ones(len(y)), 42, 3000, 0)
+    flagged = (m.pipeline.predict_proba(encode(feats))[:, 1] >= m.info.threshold).mean()
+    assert flagged <= 0.45

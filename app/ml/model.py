@@ -94,13 +94,26 @@ def build_pipeline(kind: str, seed: int) -> Pipeline:
     raise ValueError(f"unknown model kind: {kind!r}")
 
 
-def _best_threshold(y_true: np.ndarray, p: np.ndarray) -> float:
-    """Threshold maximising F1 on validation data (the 0.5 default misses most no-shows at a ~20% base rate)."""
-    best_t, best_f1 = 0.3, -1.0
+MAX_FLAG_RATE = 0.40  # never alert on more than this share of appointments
+
+
+def _best_threshold(y_true: np.ndarray, p: np.ndarray, max_flag_rate: float = MAX_FLAG_RATE) -> float:
+    """Pick the alert threshold on validation data.
+
+    Maximising F1 alone picks a very low cut-off at a ~20% base rate and would flag most of the
+    day, which staff would learn to ignore. So among thresholds that flag at most
+    ``max_flag_rate`` of appointments, take the one with the best F1.
+    """
+    floor = float(np.quantile(p, 1.0 - max_flag_rate))  # lowest cut-off that respects the cap
+    best_t, best_f1 = None, -1.0
     for t in np.linspace(0.05, 0.80, 76):
+        if t < floor:
+            continue
         f1 = f1_score(y_true, p >= t, zero_division=0)
         if f1 > best_f1:
             best_t, best_f1 = float(t), f1
+    if best_t is None:  # every candidate was below the floor
+        best_t = floor
     return round(best_t, 2)
 
 
