@@ -12,8 +12,7 @@ Python 3.11+ · FastAPI · SQLite · scikit-learn · vanilla JavaScript (no buil
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 
-cp .env.example .env              # demo passwords; edit if you like (never commit .env)
-python scripts/seed_demo.py       # optional: ~6 weeks of fake history so the dashboard has data
+python scripts/seed_demo.py       # optional: ~6 weeks of history with Indian patient profiles
 python main.py                    # or: python -m app, or uvicorn app.main:get_app --factory
 ```
 
@@ -26,7 +25,7 @@ Open <http://localhost:8000> and sign in with one of the accounts below.
 | `staff` | staff | enter appointments, reconcile outcomes, view dashboard, model info and export CSV |
 | `auditor` | auditor | read-only: view appointments, dashboard and export |
 
-Demo passwords in `.env.example` are `admin-demo-2026`, `staff-demo-2026`, `auditor-demo-2026`.
+Demo passwords are `admin-demo-2026`, `staff-demo-2026`, `auditor-demo-2026`.
 
 ```bash
 pytest                              # 128 backend tests (~40 s; trains a small model per app instance)
