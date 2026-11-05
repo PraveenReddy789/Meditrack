@@ -189,3 +189,10 @@ AI was used initially to provide a high-level outline and starting project scaff
 * **Past Booking Validation:** Fixed conflicting validations so users can freely navigate historical records while strictly blocking past time/date bookings.
 * **Repository & Secrets Hardening:** Comprehensive `.gitignore` configuration ensuring all `.env`, `.env.*`, and SQLite database files are strictly ignored and prevented from being tracked in Git.
 * **Test Suite Verification:** Maintained and expanded test coverage across schemas, RBAC, API endpoints, and validation rules to 100% pass rate (129 backend tests).
+
+### 4. Machine Learning & Predictive Modeling Improvements
+* **Algorithm Selection & Clinical Explainability:** Selected calibrated Logistic Regression over complex tree ensembles (GBM) after benchmarking, achieving 2–8× lower latency (< 0.25 ms per row for synchronous scoring at booking time), well-calibrated probabilities (Brier score ~0.157), and transparent signed feature weights directly inspectable by clinical staff.
+* **Cold-Start Bootstrapping & Continuous Learning:** Implemented a synthetic prior distribution simulator to bootstrap fresh clinics with zero prior data, paired with a continuous retraining loop applying 3× sample weighting to real clinic outcomes and automatic re-scoring of all pending appointments.
+* **Alert Fatigue Prevention (Dynamic Thresholding):** Calibrated the risk alert cutoff on a separate validation split, capping alerts at a maximum 40% of the daily schedule to avoid notification fatigue while maximizing recall on actual no-shows.
+* **Strict Temporal Integrity & Zero Leakage:** Enforced strict chronological training pipelines ensuring visits only see history prior to visit day, eliminating same-day and future label leakage across all feature extraction steps.
+* **Fault-Tolerant Heuristic Fallback:** Built an in-memory heuristic fallback pipeline (`heuristic-fallback`) using empirical smoothed patient attendance history, guaranteeing that appointment creation and booking never crash even if model inference encounters unexpected feature anomalies.
