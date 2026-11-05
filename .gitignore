@@ -1,19 +1,41 @@
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
 .pytest_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
+ENV/
 *.egg-info/
 
-# Local state and secrets
+# Environment variables and secrets
 .env
+.env.*
+.env*.local
+*.env
+!.env.example
+
+# Local state and databases
 data/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
 
-# OS / editor
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS / Editor
 .DS_Store
+.DS_Store?
+._*
 .idea/
 .vscode/

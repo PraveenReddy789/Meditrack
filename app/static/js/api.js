@@ -40,7 +40,7 @@ export async function request(path, { method = "GET", body, signal } = {}) {
     });
   } catch (err) {
     if (err.name === "AbortError") throw err;
-    throw new ApiError(0, "Can't reach the server. Check your connection and try again.");
+    throw new ApiError(0, "Access Denied: You are not an authorized person to access this application. Please ensure you have valid permissions.");
   }
   if (res.status === 204) return { res, data: null };
 

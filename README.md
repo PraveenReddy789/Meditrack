@@ -14,7 +14,7 @@ pip install -r requirements-dev.txt
 
 cp .env.example .env              # demo passwords; edit if you like (never commit .env)
 python scripts/seed_demo.py       # optional: ~6 weeks of fake history so the dashboard has data
-uvicorn app.main:get_app --factory --port 8000
+python main.py                    # or: python -m app, or uvicorn app.main:get_app --factory
 ```
 
 Open <http://localhost:8000> and sign in with one of the accounts below.

@@ -5,12 +5,12 @@ import { addDays, clear, el, localISODate, num1, pct, prettyDate, toast } from "
 export function mountDashboard(root, ctx) {
   const state = { days: 30 };
   const body = el("div");
-  const select = el("select", { id: "range", "aria-label": "Time range" },
+  const select = el("select", { id: "range", class: "control-select", "aria-label": "Time range" },
     [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], [90, "Last 90 days"]]
       .map(([v, l]) => el("option", { value: v, selected: v === state.days }, l)));
   select.addEventListener("change", () => { state.days = Number(select.value); load(); });
 
-  const exportKind = el("select", { id: "export-kind", "aria-label": "Report type" },
+  const exportKind = el("select", { id: "export-kind", class: "control-select", "aria-label": "Report type" },
     el("option", { value: "appointments" }, "Every appointment"),
     el("option", { value: "daily" }, "Daily summary"));
   const exportBtn = el("button", { type: "button", class: "btn" }, "Export CSV");
@@ -35,23 +35,52 @@ export function mountDashboard(root, ctx) {
     }
   });
 
+  const refreshBtn = el("button", { type: "button", class: "btn btn-quiet", onclick: () => load(true), "aria-label": "Refresh dashboard data" }, "Refresh");
+
+  const displayName = ctx?.user?.username ? (ctx.user.username.charAt(0).toUpperCase() + ctx.user.username.slice(1)) : "Staff";
+
+  const toolbar = el("div", { class: "dashboard-toolbar" },
+    select,
+    exportKind,
+    exportBtn,
+    refreshBtn);
+
   root.append(
     el("div", { class: "page-head" },
-      el("div", {}, el("h1", {}, "Dashboard"), el("p", { class: "muted" }, "No-shows so far, what the model expects, and how the rate is trending.")),
-      el("div", { class: "form-row" }, select, exportKind, exportBtn)),
+      el("div", { class: "page-head-title" },
+        el("h1", {}, `Good morning, Dr. ${displayName}`),
+        el("p", { class: "muted" }, "Your clinic shift: 8:00 am – 5:00 pm · Real-time AI No-Show Reconciliation")),
+      toolbar),
     body);
 
-  async function load() {
+  async function load(notify = false) {
     try {
       const data = await api(`/api/dashboard?days=${state.days}`);
       render(data);
+      if (notify) toast("Dashboard refreshed");
     } catch (err) {
       clear(body).append(el("div", { class: "alert error", role: "alert" }, err.message));
     }
   }
 
-  function kpi(label, value, sub) {
-    return el("div", { class: "card kpi" }, el("div", { class: "label" }, label), el("div", { class: "value" }, value), el("div", { class: "sub" }, sub));
+  function kpi(label, value, sub, tag = "") {
+    return el("div", { class: "card kpi" },
+      el("div", { class: "kpi-header" },
+        el("span", { class: "label" }, label),
+        tag ? el("span", { class: "kpi-tag" }, tag) : null),
+      el("div", { class: "value" }, value),
+      el("div", { class: "sub" }, sub));
+  }
+
+  function heroKpi(label, value, sub, percent) {
+    return el("div", { class: "card kpi card-hero" },
+      el("div", { class: "kpi-header" },
+        el("span", { class: "label" }, label),
+        el("span", { class: "kpi-tag hero" }, `${percent}% Done`)),
+      el("div", { class: "value" }, value),
+      el("div", { class: "hero-meter" },
+        el("div", { class: "hero-meter-bar", style: `width: ${percent}%;` })),
+      el("div", { class: "sub" }, sub));
   }
 
   function breakdownTable(title, rows, labelHeader) {
@@ -68,49 +97,58 @@ export function mountDashboard(root, ctx) {
   function render(d) {
     const s = d.summary;
     const q = d.prediction_quality;
+
+    const reconciledToday = d.today.attended + d.today.no_shows;
+    const todayPct = d.today.total > 0 ? Math.round((reconciledToday / d.today.total) * 100) : 0;
+
     clear(body).append(
       el("div", { class: "grid cols-4" },
-        kpi("No-shows", s.no_shows, `${s.reconciled} reconciled visit${s.reconciled === 1 ? "" : "s"}`),
-        kpi("No-show rate", pct(s.no_show_rate), "of reconciled visits"),
-        kpi("Predicted no-shows", num1(s.expected_no_shows), `${s.flagged} flagged high-risk`),
-        kpi("Today", `${d.today.no_shows} / ${d.today.total}`, `${d.today.scheduled} still to reconcile`)),
+        heroKpi("Visits Today", `${reconciledToday} / ${d.today.total}`, `${d.today.scheduled} pending reconciliation · ${d.today.no_shows} no-show`, todayPct),
+        kpi("Reconciled Visits", s.reconciled, `${s.attended} attended · ${s.no_shows} no-shows`, "Historical"),
+        kpi("Predicted No-Shows", num1(s.expected_no_shows), `${s.flagged} flagged high-risk`, "AI Alert"),
+        kpi("Clinic No-Show Rate", pct(s.no_show_rate), "of reconciled appointments", "Overall")),
 
-      el("section", { class: "card" },
-        el("h2", {}, "No-shows per day"),
-        el("div", { class: "legend" },
-          el("span", {}, el("span", { class: "swatch actual" }), "Actual no-shows"),
-          el("span", {}, el("span", { class: "swatch expected" }), "Model expected")),
+      el("section", { class: "card chart-card" },
+        el("div", { class: "card-title-row" },
+          el("h2", {}, "Daily Appointments & AI Expectations"),
+          el("div", { class: "legend" },
+            el("span", {}, el("span", { class: "swatch actual" }), "Actual no-shows"),
+            el("span", {}, el("span", { class: "swatch expected" }), "Model expected"))),
         dailyChart(d.trend)),
 
-      el("section", { class: "card" },
-        el("h2", {}, "No-show rate trend"),
-        el("div", { class: "legend" }, el("span", {}, el("span", { class: "swatch rate" }), "Rolling 7-day rate")),
+      el("section", { class: "card chart-card" },
+        el("div", { class: "card-title-row" },
+          el("h2", {}, "Rolling 7-Day No-Show Rate Trend"),
+          el("div", { class: "legend" },
+            el("span", {}, el("span", { class: "swatch rate" }), "Rolling 7-day rate"))),
         rateChart(d.trend)),
 
       el("div", { class: "grid cols-2" },
-        el("section", { class: "card" }, el("h2", {}, "Next 7 days"),
+        el("section", { class: "card" }, el("h2", {}, "Upcoming Visits (Next 7 Days)"),
           el("div", { class: "table-wrap" }, el("table", {},
-            el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Day"), el("th", { scope: "col", class: "num" }, "Booked"), el("th", { scope: "col", class: "num" }, "Expected no-shows"), el("th", { scope: "col", class: "num" }, "High-risk"))),
+            el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Day"), el("th", { scope: "col", class: "num" }, "Booked"), el("th", { scope: "col", class: "num" }, "Expected No-Shows"), el("th", { scope: "col", class: "num" }, "High-Risk"))),
             el("tbody", {}, d.upcoming.map((u) => el("tr", {},
               el("td", {}, prettyDate(u.date)), el("td", { class: "num" }, u.total), el("td", { class: "num" }, num1(u.expected_no_shows)), el("td", { class: "num" }, u.flagged))))))),
 
-        el("section", { class: "card" }, el("h2", {}, "How good are the predictions?"),
+        el("section", { class: "card" }, el("h2", {}, "Model Prediction Quality"),
           q.tp + q.fp + q.fn + q.tn === 0
             ? el("p", { class: "empty" }, "Appears once visits have been marked attended or no-show.")
             : el("div", {},
               el("dl", { class: "facts" },
-                el("dt", {}, "Caught"), el("dd", {}, `${pct(q.recall, 0)} of real no-shows were flagged`),
+                el("dt", {}, "Caught (Recall)"), el("dd", {}, `${pct(q.recall, 0)} of real no-shows were flagged`),
                 el("dt", {}, "Precision"), el("dd", {}, `${pct(q.precision, 0)} of flags were real no-shows`),
                 el("dt", {}, "Accuracy"), el("dd", {}, pct(q.accuracy, 0))),
               el("div", { class: "confusion" },
-                el("div", {}, el("b", {}, q.tp), "flagged, no-show"), el("div", {}, el("b", {}, q.fp), "flagged, attended"),
-                el("div", {}, el("b", {}, q.fn), "missed no-shows"), el("div", {}, el("b", {}, q.tn), "not flagged, attended"))),
+                el("div", { class: "tile tp" }, el("span", { class: "tile-val" }, q.tp), el("span", { class: "tile-lbl" }, "Flagged, No-Show")),
+                el("div", { class: "tile fp" }, el("span", { class: "tile-val" }, q.fp), el("span", { class: "tile-lbl" }, "Flagged, Attended")),
+                el("div", { class: "tile fn" }, el("span", { class: "tile-val" }, q.fn), el("span", { class: "tile-lbl" }, "Missed No-Shows")),
+                el("div", { class: "tile tn" }, el("span", { class: "tile-val" }, q.tn), el("span", { class: "tile-lbl" }, "Not Flagged, Attended")))),
           el("p", { class: "hint" }, `Model ${d.model.version} · alert threshold ${Math.round(d.model.threshold * 100)}%`))),
 
       el("div", { class: "grid cols-2" },
-        breakdownTable("By appointment type", d.by_type.map((r) => ({ ...r, label: r.label.replace("_", " ") })), "Type"),
-        breakdownTable("By weekday", d.by_weekday, "Day")),
-      breakdownTable("By hour of day", d.by_hour, "Hour"),
+        breakdownTable("By Appointment Type", d.by_type.map((r) => ({ ...r, label: r.label.replace("_", " ") })), "Type"),
+        breakdownTable("By Weekday", d.by_weekday, "Day")),
+      breakdownTable("By Clinic Hour (8:00 AM – 5:00 PM)", d.by_hour, "Hour"),
 
       el("p", { class: "hint" }, `Updated ${new Date(d.generated_at).toLocaleTimeString()} · results are cached briefly and refreshed after every change.`));
   }

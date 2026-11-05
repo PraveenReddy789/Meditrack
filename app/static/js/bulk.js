@@ -40,12 +40,18 @@ export function parseBulk(text, date) {
       errors.push({ line, message: `"${parts[1]}" is not a valid time (use HH:MM, e.g. 09:30)` });
       return;
     }
+    const [h, minVal] = time.split(":").map(Number);
+    if (h < 8 || h > 17 || (h === 17 && minVal > 0)) {
+      errors.push({ line, message: `Time "${time}" is outside clinic hours. Appointments will be between 8:00 AM (08:00) and 5:00 PM (17:00).` });
+      return;
+    }
     const type = parts[2] ? normalizeType(parts[2]) : "checkup";
     if (!TYPES.includes(type)) {
       errors.push({ line, message: `Unknown type "${parts[2]}". Use: ${TYPES.join(", ")}` });
       return;
     }
-    rows.push({ patient_name: parts[0], appointment_date: date, appointment_time: time, appointment_type: type });
+    const phone = parts[3] ? parts[3].trim() : `+91 98450 ${String(10000 + line)}`;
+    rows.push({ patient_name: parts[0], patient_phone: phone, appointment_date: date, appointment_time: time, appointment_type: type });
     lines.push(line);
   });
   return { rows, lines, errors };

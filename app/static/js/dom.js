@@ -69,3 +69,53 @@ export function toast(message, { error = false } = {}) {
   host.append(node);
   setTimeout(() => node.remove(), error ? 7000 : 3800);
 }
+
+function alertIcon() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "44");
+  svg.setAttribute("height", "44");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "#f59e0b");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01");
+  svg.append(path);
+  return svg;
+}
+
+export function showCenterModal(title, message) {
+  const existing = document.getElementById("center-modal");
+  if (existing) existing.remove();
+
+  const closeBtn = el("button", { type: "button", class: "btn" }, "Understood");
+  const modal = el("div", { id: "center-modal", class: "modal-backdrop", role: "dialog", "aria-modal": "true" },
+    el("div", { class: "modal-dialog" },
+      el("div", { class: "modal-icon", "aria-hidden": "true" }, alertIcon()),
+      el("h2", { class: "modal-title" }, title),
+      el("p", { class: "modal-message" }, message),
+      el("div", { class: "modal-actions" }, closeBtn)
+    )
+  );
+
+  const dismiss = () => {
+    modal.classList.add("fade-out");
+    setTimeout(() => modal.remove(), 180);
+  };
+
+  closeBtn.addEventListener("click", dismiss);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) dismiss();
+  });
+  document.addEventListener("keydown", function onKey(e) {
+    if (e.key === "Escape") {
+      dismiss();
+      document.removeEventListener("keydown", onKey);
+    }
+  });
+
+  document.body.append(modal);
+  closeBtn.focus();
+}

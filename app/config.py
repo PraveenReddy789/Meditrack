@@ -56,6 +56,7 @@ class Settings:
 
     # Input limits
     max_bulk_rows: int = 200
+    allow_past_appointments: bool = False
 
     def __post_init__(self) -> None:
         if self.model_kind not in VALID_MODEL_KINDS:
@@ -77,4 +78,5 @@ class Settings:
             model_kind=os.environ.get("MEDITRACK_MODEL_KIND", "logistic"),
             cache_ttl_seconds=int(os.environ.get("MEDITRACK_CACHE_TTL_SECONDS", "60")),
             bootstrap_passwords=passwords,
+            allow_past_appointments=_env_bool("MEDITRACK_ALLOW_PAST", False),
         )

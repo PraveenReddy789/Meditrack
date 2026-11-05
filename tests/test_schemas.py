@@ -9,6 +9,7 @@ from app.schemas import AppointmentIn, patient_key
 def make(**overrides):
     base = {
         "patient_name": "Asha Rao",
+        "patient_phone": "+91 98450 12345",
         "appointment_date": date.today().isoformat(),
         "appointment_time": "09:30",
     }
@@ -82,3 +83,23 @@ def test_unknown_fields_and_types_are_rejected():
 
 def test_patient_key_is_case_and_space_insensitive():
     assert patient_key("  ASHA   rao") == patient_key("asha rao")
+
+
+def test_valid_and_invalid_patient_phone():
+    assert make(patient_phone="+1 555-0199").patient_phone == "+1 555-0199"
+    assert make(patient_phone="(555) 123-4567").patient_phone == "(555) 123-4567"
+    assert make(patient_phone="9398242064").patient_phone == "+91 93982 42064"
+    assert make(patient_phone="+91 93982 42064").patient_phone == "+91 93982 42064"
+
+    with pytest.raises(ValidationError):
+        make(patient_phone=None)
+    with pytest.raises(ValidationError):
+        make(patient_phone="")
+    with pytest.raises(ValidationError):
+        make(patient_phone="   ")
+    with pytest.raises(ValidationError):
+        make(patient_phone="call-me-maybe")
+    with pytest.raises(ValidationError):
+        make(patient_phone="123")  # too short (< 7 digits)
+    with pytest.raises(ValidationError):
+        make(patient_phone="1234567890123456789")  # too long (> 15 digits)

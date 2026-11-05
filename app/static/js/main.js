@@ -36,7 +36,14 @@ function showLogin(message = "") {
         user = await api("/api/auth/login", { method: "POST", body: { username: username.value.trim(), password: password.value } });
         start();
       } catch (err) {
-        const text = err instanceof ApiError && err.status === 422 ? "Enter your username and password." : err.message;
+        let text;
+        if (err instanceof ApiError && err.status === 422) {
+          text = "Enter your username and password.";
+        } else if (err instanceof ApiError && err.status === 429) {
+          text = "Too many failed sign-in attempts. Please wait 5 minutes before trying again.";
+        } else {
+          text = "Access Denied: You are not an authorized person to log in to this application. Please ensure you have valid credentials and permission to access MediTrack.";
+        }
         errorHost.append(el("div", { class: "alert error", role: "alert" }, text));
         password.value = "";
         password.focus();

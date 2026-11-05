@@ -6,8 +6,8 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-CLINIC_OPEN = time(7, 0)
-CLINIC_CLOSE = time(20, 0)  # last bookable slot is 19:59
+CLINIC_OPEN = time(8, 0)
+CLINIC_CLOSE = time(17, 0)  # 5:00 PM
 MAX_PAST_DAYS = 365 * 3
 MAX_FUTURE_DAYS = 365
 
@@ -40,10 +40,30 @@ class AppointmentIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     patient_name: str = Field(min_length=1, max_length=100)
+    patient_phone: str = Field(min_length=7, max_length=30, description="Patient mobile contact number (required)")
     appointment_date: date
     appointment_time: time
     appointment_type: AppointmentType = AppointmentType.CHECKUP
     booked_on: date | None = None
+
+    @field_validator("patient_phone")
+    @classmethod
+    def _valid_phone(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("mobile number is required")
+        v = v.strip()
+        if not all(ch.isdigit() or ch in "+ -()." for ch in v):
+            raise ValueError("mobile number may contain only digits, +, -, (, ), and spaces")
+        digits_only = "".join(ch for ch in v if ch.isdigit())
+        if len(digits_only) < 7 or len(digits_only) > 15:
+            raise ValueError("mobile number must contain between 7 and 15 digits")
+        # Format 10-digit Indian numbers (e.g. 9398242064 -> +91 93982 42064)
+        if len(digits_only) == 10 and digits_only[0] in "6789":
+            return f"+91 {digits_only[:5]} {digits_only[5:]}"
+        # Format 12-digit Indian numbers starting with 91 (e.g. 919398242064 -> +91 93982 42064)
+        if len(digits_only) == 12 and digits_only.startswith("91") and digits_only[2] in "6789":
+            return f"+91 {digits_only[2:7]} {digits_only[7:]}"
+        return v
 
     @field_validator("patient_name")
     @classmethod
@@ -61,9 +81,9 @@ class AppointmentIn(BaseModel):
         if v.tzinfo is not None:
             raise ValueError("appointment time must not include a timezone")
         v = v.replace(second=0, microsecond=0)
-        if not (CLINIC_OPEN <= v < CLINIC_CLOSE):
+        if not (CLINIC_OPEN <= v <= CLINIC_CLOSE):
             raise ValueError(
-                f"appointment time must be between {CLINIC_OPEN:%H:%M} and {CLINIC_CLOSE:%H:%M}"
+                f"appointment time must be between {CLINIC_OPEN:%H:%M} and {CLINIC_CLOSE:%H:%M} (appointments will be between 8:00 AM and 5:00 PM)"
             )
         return v
 
@@ -112,6 +132,7 @@ class LoginIn(BaseModel):
 class AppointmentOut(BaseModel):
     id: int
     patient_name: str
+    patient_phone: str | None = None
     appointment_date: date
     appointment_time: str
     appointment_type: AppointmentType

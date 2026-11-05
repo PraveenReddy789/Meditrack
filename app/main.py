@@ -2,8 +2,15 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# When executed directly as `python app/main.py`, ensure project root is on sys.path
+_repo_root = str(Path(__file__).resolve().parent.parent)
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -51,7 +58,7 @@ def build_state(settings: Settings) -> AppState:
         ),
         model=model_service,
         cache=cache,
-        appointments=AppointmentService(repo, model_service, cache),
+        appointments=AppointmentService(repo, model_service, cache, settings),
         dashboard=dashboard,
         reports=ReportService(repo, dashboard),
     )
@@ -112,3 +119,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 def get_app() -> FastAPI:
     """Entry point for `uvicorn app.main:get_app --factory`."""
     return create_app()
+
+
+def main() -> None:
+    """Entry point when running directly with Python."""
+    import argparse
+    import uvicorn
+
+    parser = argparse.ArgumentParser(description="Run the MediTrack web server")
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("MEDITRACK_HOST", os.environ.get("HOST", "127.0.0.1")),
+        help="Bind host (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("MEDITRACK_PORT", os.environ.get("PORT", "8000"))),
+        help="Bind port (default: 8000)",
+    )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        default=os.environ.get("MEDITRACK_RELOAD", "true").lower() in {"1", "true", "yes", "on"},
+        help="Enable auto-reload on code changes (default: true)",
+    )
+    args = parser.parse_args()
+
+    uvicorn.run("app.main:get_app", factory=True, host=args.host, port=args.port, reload=args.reload)
+
+
+if __name__ == "__main__":
+    main()

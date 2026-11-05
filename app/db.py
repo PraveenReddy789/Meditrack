@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS appointments (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     patient_name      TEXT NOT NULL,
+    patient_phone     TEXT,
     patient_key       TEXT NOT NULL,
     appointment_date  TEXT NOT NULL,
     appointment_time  TEXT NOT NULL,
@@ -86,6 +87,10 @@ class Database:
         with self.connect() as conn:
             conn.execute("PRAGMA journal_mode = WAL")
             conn.executescript(SCHEMA)
+            # Ensure patient_phone column exists in existing DBs
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(appointments)").fetchall()]
+            if "patient_phone" not in cols:
+                conn.execute("ALTER TABLE appointments ADD COLUMN patient_phone TEXT")
 
 
 class UserRepository:
@@ -144,6 +149,37 @@ class AppointmentRepository:
         self.db = db
 
     # ---- writes -----------------------------------------------------------
+    def find_conflicts(self, slots: list[tuple[str, str, str, str, str]]) -> str | None:
+        """Check if any of the given slots (date, time, type, patient_key, patient_name) conflict.
+
+        A conflict occurs if:
+        1. An appointment of the same type is already booked on that date and time.
+        2. Or the same patient already has an appointment on that date and time.
+        """
+        if not slots:
+            return None
+        with self.db.connect() as conn:
+            for day, t, typ, p_key, p_name in slots:
+                # 1. Check if the same patient already has an appointment on that date & time
+                row_patient = conn.execute(
+                    """SELECT patient_name FROM appointments
+                       WHERE appointment_date = ? AND appointment_time = ? AND patient_key = ?""",
+                    (day, t, p_key),
+                ).fetchone()
+                if row_patient:
+                    return f"{p_name} already has an appointment on {day} at {t}"
+
+                # 2. Check if this appointment type is already booked (scheduled) at that date & time
+                row_type = conn.execute(
+                    """SELECT patient_name, appointment_type FROM appointments
+                       WHERE appointment_date = ? AND appointment_time = ? AND appointment_type = ? AND status = 'scheduled'""",
+                    (day, t, typ),
+                ).fetchone()
+                if row_type:
+                    type_label = row_type["appointment_type"].replace("_", " ")
+                    return f"A {type_label} appointment is already booked on {day} at {t}. Please choose another time slot."
+        return None
+
     def insert_many(self, rows: list[dict]) -> list[int]:
         """Insert atomically. A duplicate slot aborts the whole batch."""
         ids: list[int] = []
@@ -152,13 +188,13 @@ class AppointmentRepository:
                 for r in rows:
                     cur = conn.execute(
                         """INSERT INTO appointments
-                           (patient_name, patient_key, appointment_date, appointment_time,
+                           (patient_name, patient_phone, patient_key, appointment_date, appointment_time,
                             appointment_type, booked_on, lead_days, risk_score, risk_level,
                             predicted_no_show, model_version, created_by, created_at)
-                           VALUES (:patient_name, :patient_key, :appointment_date, :appointment_time,
+                           VALUES (:patient_name, :patient_phone, :patient_key, :appointment_date, :appointment_time,
                                    :appointment_type, :booked_on, :lead_days, :risk_score, :risk_level,
                                    :predicted_no_show, :model_version, :created_by, :created_at)""",
-                        {**r, "created_at": utcnow_iso()},
+                        {"patient_phone": r.get("patient_phone"), **r, "created_at": utcnow_iso()},
                     )
                     ids.append(cur.lastrowid)
             except sqlite3.IntegrityError as exc:

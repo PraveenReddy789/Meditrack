@@ -15,6 +15,7 @@ def make_settings(tmp_path, **overrides) -> Settings:
         bootstrap_passwords=dict(PASSWORDS),
         synthetic_rows=1500,  # keeps app start-up (model training) fast in tests
         cache_ttl_seconds=60,
+        allow_past_appointments=True,
     )
     base.update(overrides)
     return Settings(**base)
@@ -45,9 +46,10 @@ def clients(app):
         yield made
 
 
-def appt(name="Asha Rao", days=0, time="09:30", typ="checkup", **extra):
+def appt(name="Asha Rao", days=0, time="09:30", typ="checkup", phone="+91 98450 12345", **extra):
     return {
         "patient_name": name,
+        "patient_phone": phone,
         "appointment_date": (date.today() + timedelta(days=days)).isoformat(),
         "appointment_time": time,
         "appointment_type": typ,

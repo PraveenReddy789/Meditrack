@@ -118,8 +118,8 @@ def test_patient_history_raises_predicted_risk(clients):
 
     history("Repeat Rita", "no_show")
     history("Reliable Ravi", "attended")
-    rita = staff.post("/api/appointments", json=appt(name="Repeat Rita", days=7)).json()
-    ravi = staff.post("/api/appointments", json=appt(name="Reliable Ravi", days=7)).json()
+    rita = staff.post("/api/appointments", json=appt(name="Repeat Rita", days=7, time="09:30")).json()
+    ravi = staff.post("/api/appointments", json=appt(name="Reliable Ravi", days=7, time="10:00")).json()
     assert rita["risk_score"] > ravi["risk_score"] + 0.1
 
 
