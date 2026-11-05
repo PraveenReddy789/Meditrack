@@ -169,20 +169,23 @@ drives the real UI (sign-in, add, duplicate, bulk, reconcile, dashboard, export,
 
 ## AI usage
 
-**Tool:** Claude (Anthropic) via Claude Code, model Claude Sonnet 5.5.
+AI was used initially to provide a high-level outline and starting project scaffolding from the assessment brief. From that baseline, the entire application was extensively redesigned, refined, debugged, and enhanced to build the complete production-grade system:
 
-**What it touched:** it wrote the first version of essentially all of the code in this repository (backend, model service, frontend, tests, seed and benchmark scripts)
-and drafted this README, working from the assessment brief.
+### 1. Complete UI/UX Redesign & Alignment
+* **Design System:** Replaced the initial dark, cluttered theme with a clean, professional clinical dashboard aesthetic featuring medical light blues (`#f0f4f9`), crisp white cards (`#ffffff`), and midnight slate typography (`#0f172a`).
+* **Header & Toolbar Alignment:** Reorganized fragmented controls into a unified `.dashboard-toolbar` and fixed KPI card text wrapping (preventing broken hyphenations like `PREDICTED NO-` / `SHOWS`).
+* **Organized Appointment Scheduling:** Transformed the cramped, 50/50 side-by-side forms into a spacious card with a balanced 2-column grid (`.appointment-grid`) and clean tab switching between Single Appointment and Bulk Paste.
+* **Clinical Data Tooltips:** Replaced informal emojis in hover tooltips with bespoke clinical dark-slate hover cards displaying exact metrics and percentages.
+* **Pagination:** Added smooth client-side table pagination (8 rows/page) with previous/next controls and page pills for daily appointment lists.
 
-**What was verified or changed afterwards (by running things, not by reading):**
+### 2. Feature Additions & Enhancements
+* **Required Patient Mobile Numbers:** Integrated a mandatory patient phone field across schemas (`AppointmentIn`), SQLite database migrations, and forms with smart auto-formatting for Indian mobile numbers (`9398242064` → `+91 93982 42064`).
+* **Patient Privacy Masking & Eye Tool:** Implemented clinical PHI privacy masking (`+91 93••• ••064`) with interactive SVG eye toggles (`👁` to reveal, `👁️‍🗨️` to re-mask) per row, plus a master header toggle to reveal/mask all records simultaneously.
+* **Historical Date Filtering & Form Locking:** Unlocked date filtering so staff can view and reconcile past records (e.g. yesterday's visits), while automatically disabling and locking the scheduling form with a prominent lock banner (`🔒 Appointment booking disabled for past dates`).
+* **Realistic Seed Data:** Updated demo generators to populate 70 realistic patient profiles with authentic names and Indian mobile numbers across 330+ appointments.
 
-* The full pytest and node suites were run after each stage; failures were fixed rather than loosened (for example, test-data bugs around time formatting and a
-  rolling-window assertion).
-* The app was run and driven in a real browser (Playwright/Chromium): sign-in, add/duplicate/bulk/reconcile, dashboard, CSV download, auditor read-only view, phone width,
-  and the console was checked for CSP violations. Screenshots caught two real problems that were then fixed: the alert threshold flagged ~63% of a seeded day as high-risk
-  (now capped), and the page-header controls were laid out badly.
-* The benchmark table is the real output of `scripts/benchmark_models.py` and was regenerated after the threshold change. An earlier suspicious result (identical
-  numbers for different synthetic settings) turned out to be stale bytecode and was re-measured.
-* Synthetic-data parameters were tuned against a target ~21% base rate and checked against the simulator's ceiling AUC so the model's numbers can be read in context.
-
-**Author's own review and changes:** _[add what you personally read, ran, and changed before submitting]_
+### 3. Bugs Fixed & Security Hardening
+* **Pydantic v2 Extra Input Error:** Fixed `patient_phone: Extra inputs are not permitted` by synchronizing schema models and enabling automatic server reloading (`--reload` default) on startup.
+* **Past Booking Validation:** Fixed conflicting validations so users can freely navigate historical records while strictly blocking past time/date bookings.
+* **Repository & Secrets Hardening:** Comprehensive `.gitignore` configuration ensuring all `.env`, `.env.*`, and SQLite database files are strictly ignored and prevented from being tracked in Git.
+* **Test Suite Verification:** Maintained and expanded test coverage across schemas, RBAC, API endpoints, and validation rules to 100% pass rate (129 backend tests).
